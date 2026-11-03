@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 运行时产物（体积大 / 含个人信息 / 可重新生成）
+novel-auto/.venv/
+novel-auto/.cache/
+novel-auto/work/
+novel-auto/output/
+novel-auto/assets/clips/
+novel-auto/assets/assets.db
+novel-auto/assets/assets.db-shm
+novel-auto/assets/assets.db-wal
+
+# 密钥
+novel-auto/.env
+.env

@@ -1,0 +1,89 @@
+# TikTok 小说推文自动化 · 配置
+# 改这个文件就能调所有参数，不用改代码。
+
+project:
+  language: en              # en = 英文（海外版）| zh = 中文
+  work_dir: work            # 中间产物（可续跑、可单独重做）
+  out_dir: output           # 成品目录
+  font: ""                  # 留空 = 按语言自动（en→Avenir Next，zh→Hiragino Sans GB）
+  font_path: ""             # 留空 = 按语言自动
+
+target:
+  minutes_min: 3            # 成片最短（分钟）：长视频至少 3 分钟
+  minutes_max: 10           # 成片最长（分钟）：TikTok 上限 10 分钟
+  tolerance: 0.08           # 时长收敛容差
+  chars_per_sec: 5.2        # 估算语速（字/秒），用来预判目标字数
+  max_rounds: 3             # 时长收敛最多迭代轮数
+
+script:
+  provider: deepseek
+  base_url: https://api.deepseek.com
+  model: deepseek-chat
+  temperature: 1.15
+  timeout: 180
+  style: auto               # auto | thriller | romance | revenge | sweet | drama
+  person: auto              # auto | first | third（第一/第三人称）
+  hook_strength: normal     # normal | strong | max（开头钩子的强度）
+
+tts:
+  provider: edge            # edge | say | volc | minimax
+  voice: ""                 # 留空 = 按语言自动（en→en-US-AndrewNeural，zh→zh-CN-YunxiNeural）
+  rate: "-6%"               # 语速，解压视频偏慢
+  volume: "+0%"
+  max_workers: 3
+  retries: 3
+  cache_dir: .cache/tts     # 同句音频复用，改文案不重复计费
+  # volc / minimax 参数（换 provider 时才用）
+  volc_voice: zh_female_shuangkuaisisi_moon_bigtts
+  minimax_voice: male-qn-qingse
+  minimax_model: speech-02-hd
+  # macOS 离线兜底
+  say_voice: Tingting
+  say_rate: 175
+
+subtitle:
+  font_size: 64
+  margin_v: 660             # 距底部距离，越大字幕越靠上（避开 TikTok 底部 UI）
+  outline: 4
+  shadow: 2
+  primary: "&H00FFFFFF"
+  outline_color: "&H00000000"
+  max_chars_per_line: 0     # 0 = 按语言自动（en→38，zh→16）
+  fade_in_ms: 120
+  fade_out_ms: 80
+
+render:
+  width: 1080
+  height: 1920
+  fps: 30
+  crf: 20
+  preset: medium
+  kb_strength: 0.00035      # Ken Burns 推镜速度
+  grain: 7                  # 胶片颗粒（防撞车 + 质感）
+  color_delta: 0.04
+  bgm_volume_db: -30        # 建议 -30 以下或留空，人声优先
+  bgm_path: ""              # 可选：环境音/BGM 文件路径
+
+assets:
+  dir: assets/clips         # 把你的解压素材丢这里
+  db: assets/assets.db
+  cooldown_days: 7          # 同一素材多少天内不重复用
+  min_segment: 6
+  max_segment: 15
+  exclude_categories: ["_synthetic"]   # 默认排除测试素材；真素材不够时才会回退使用
+
+pipeline:
+  chapter_min_sec: 40       # 每个渲染段最短
+  chapter_max_sec: 75       # 每个渲染段最长
+  offline: false            # true = 不调大模型，用离线改写
+
+qc:
+  blackdetect: true         # 黑帧检测（很暗的素材可把 pix_th 调低或关掉）
+  black_min_duration: 2.0   # 黑帧超过多少秒算问题
+  black_pix_th: 0.05        # 判定为“黑”的亮度阈值（0.05 = 5%）
+  silencedetect: true
+  silence_db: -45           # 低于 -45dB 算静音
+  silence_min_duration: 2.0 # 静音超过多少秒算问题
+  max_asset_reuse: 3        # 单个素材在一条视频里最多出现几次
+  lufs_target: -16
+  lufs_tolerance: 2.5

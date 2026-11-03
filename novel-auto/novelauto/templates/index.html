@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小说推文自动化 · 工作台</title>
+<style>
+  :root{--bg:#0e1014;--card:#161a22;--card2:#1b2029;--line:#262c38;--txt:#e9ecf1;--dim:#98a2b3;--acc:#ff4d6d;--ok:#38d39f;--warn:#ffb020;--err:#ff6b6b;--blue:#6aa8ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.65 -apple-system,"PingFang SC","Hiragino Sans GB",sans-serif}
+  .wrap{max-width:1360px;margin:0 auto;padding:24px 20px 80px}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  h1{font-size:20px;margin:0}
+  .badge{font-size:12px;padding:3px 9px;border-radius:20px;border:1px solid var(--line);color:var(--dim)}
+  .badge.on{color:var(--ok);border-color:#1f4d3c;background:#10241d}
+  .badge.off{color:var(--warn);border-color:#4d3a12;background:#241d10}
+  .cols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
+  @media(max-width:1080px){.cols{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+  .card h2{font-size:13px;letter-spacing:.04em;color:var(--dim);margin:0 0 12px;font-weight:700;text-transform:uppercase}
+  textarea{width:100%;background:#0c0f13;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14px;line-height:1.7;resize:vertical}
+  #source{height:230px}
+  #segEditor{height:230px;font-size:13.5px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  label{font-size:12.5px;color:var(--dim)}
+  input[type=number],input[type=text],select{background:#0c0f13;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13.5px}
+  input[type=number]{width:76px}
+  input.grow{flex:1;min-width:200px}
+  select{min-width:190px}
+  button{background:var(--acc);color:#fff;border:0;border-radius:9px;padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:#232a36;color:var(--txt);font-weight:500}
+  button.mini{padding:5px 10px;font-size:12.5px}
+  .hint{color:var(--dim);font-size:12px;margin-top:8px;line-height:1.6}
+  .hook{display:block;border:1px solid var(--line);background:var(--card2);border-radius:11px;padding:12px 14px;margin-bottom:9px;cursor:pointer;transition:.15s}
+  .hook:hover{border-color:#3a4354}
+  .hook.sel{border-color:var(--acc);background:#221820;box-shadow:0 0 0 1px var(--acc) inset}
+  .hook .t{display:inline-block;font-size:11.5px;color:var(--acc);border:1px solid #4a2530;border-radius:6px;padding:1px 7px;margin-right:8px;font-weight:600}
+  .hook .x{font-size:15px;line-height:1.5;margin-top:6px}
+  .bar{height:9px;background:#0c0f13;border-radius:6px;overflow:hidden;margin:10px 0 6px}
+  .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),#ff9a5a);transition:width .3s}
+  .msg{color:var(--dim);font-size:13px;min-height:19px}
+  .stat{display:flex;gap:14px;flex-wrap:wrap;color:var(--dim);font-size:13px}
+  .stat b{color:var(--txt)}
+  video{width:100%;border-radius:10px;background:#000;display:block}
+  .files a{display:inline-block;margin:6px 10px 0 0;color:var(--blue);font-size:13px}
+  pre{background:#0c0f13;border:1px solid var(--line);border-radius:10px;padding:12px;white-space:pre-wrap;font-size:12.5px;max-height:300px;overflow:auto;margin:0}
+  .qc{margin-top:8px;font-size:13px;max-height:220px;overflow:auto}
+  .qc .it{display:flex;gap:8px;padding:3px 0;border-bottom:1px dashed #1f2430}
+  .qc .it:last-child{border-bottom:0}
+  .qc .n{flex:0 0 84px;color:var(--dim)}
+  .pass{color:var(--ok)}.warning{color:var(--warn)}.error{color:var(--err)}
+  .hide{display:none!important}
+  .err{color:#ff8c8c;font-size:13px;white-space:pre-wrap;margin-top:8px}
+  .empty{color:#5d6678;font-size:13px;padding:18px;text-align:center;border:1px dashed var(--line);border-radius:10px}
+  .flexline{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .proj-list{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+  .proj{border:1px solid var(--line);border-radius:9px;padding:7px 10px;cursor:pointer;display:flex;gap:8px;align-items:center;font-size:13px}
+  .proj:hover{border-color:#3a4354;background:#1b2029}
+  .proj.sel{border-color:var(--acc);background:#221820}
+  .proj .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .proj .st{font-size:11px;padding:1px 6px;border-radius:5px;border:1px solid var(--line);color:var(--dim)}
+  .proj .st.done{color:var(--ok);border-color:#1f4d3c}
+  .proj .st.prepared{color:var(--warn);border-color:#4d3a12}
+  .proj .st.error{color:var(--err);border-color:#5a2020}
+  .proj .del{color:var(--dim);padding:0 5px;border-radius:5px;font-size:12px;line-height:18px}
+  .proj .del:hover{color:var(--err);background:#2a1a1a}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>小说推文自动化 · 工作台</h1>
+    <span class="badge" id="llmBadge">检查大模型…</span>
+    <span class="badge" id="assetBadge">素材库…</span>
+    <span class="badge" id="langBadge">语言…</span>
+    <span class="badge">3-10 分钟竖屏</span>
+  </header>
+
+  <div class="cols">
+    <!-- 左：生产流程 -->
+    <div>
+      <div class="card">
+        <h2>项目（刷新不丢，点一下继续）
+          <label style="float:right;font-size:12px;font-weight:400;color:var(--dim)"><input type="checkbox" id="keepOutput" style="vertical-align:-2px"> 删项目时保留成片</label>
+        </h2>
+        <div id="projects" class="proj-list"><span class="hint">加载中…</span></div>
+      </div>
+
+      <div class="card">
+        <h2>① 小说原文</h2>
+        <textarea id="source" placeholder="把小说原文粘贴到这里（英文 600 词以上 / 中文 3000 字以上；会自动按目标时长截断）"></textarea>
+        <div class="row">
+          <label>目标时长</label>
+          <input type="number" id="minutes" step="0.5" min="3" max="10" placeholder="自动">
+          <label>分钟</label>
+          <input type="text" id="title" class="grow" placeholder="项目名（可选，用于文件名/目录）">
+        </div>
+        <div class="row">
+          <label>风格</label><select id="style"></select>
+          <label>人称</label><select id="person"></select>
+          <label>钩子强度</label><select id="hookStrength"></select>
+        </div>
+        <div class="row">
+          <button id="btnPrepare">① 解析原文（出 3 个开头）</button>
+          <span class="msg" id="prepMsg"></span>
+        </div>
+        <div class="hint">先解析：约 10-30 秒，会给出 3 个不同打法的「黄金三秒」和完整分段稿。<br>
+        海外版请选 English：会按英文词数预算、英文音色、英文话题标签输出（原文也应该是英文）。</div>
+        <div class="err" id="prepErr"></div>
+      </div>
+
+      <div class="card hide" id="hookCard">
+        <h2>② 选一个黄金三秒（必选）</h2>
+        <div id="hooks"></div>
+        <div class="row">
+          <label>或自己改开头：</label>
+          <input type="text" id="customHook" class="grow" placeholder="留空则用上面选中的那个">
+        </div>
+        <div class="row">
+          <button class="ghost mini" id="btnEdit">展开/收起分段稿编辑</button>
+          <span class="hint" id="segHint"></span>
+        </div>
+        <textarea id="segEditor" class="hide" style="margin-top:10px" placeholder="一行一句，可直接删句/改句。改完点生成即可。"></textarea>
+      </div>
+
+      <div class="card" id="genCard">
+        <h2>③ 生成设置</h2>
+        <div class="row">
+          <label style="flex:0 0 66px">素材目录</label>
+          <input type="text" id="assetsDir" class="grow">
+          <button class="ghost mini" id="btnPickAssets">选择…</button>
+          <button class="ghost mini" id="btnIngest">扫描入库</button>
+        </div>
+        <div class="row">
+          <label style="flex:0 0 66px">素材池</label>
+          <span class="hint" style="margin:0" id="assetHint"></span>
+          <label style="margin-left:auto"><input type="checkbox" id="excludeSynthetic" checked> 只用我的素材（排除测试素材）</label>
+          <button class="ghost mini" id="btnPurge">清理测试素材</button>
+        </div>
+        <div class="row">
+          <label style="flex:0 0 66px">导出目录</label>
+          <input type="text" id="outDir" class="grow" placeholder="默认 output/，选择后成片会另存一份到这里">
+          <button class="ghost mini" id="btnPickOut">选择…</button>
+        </div>
+        <div class="row">
+          <label style="flex:0 0 66px">语言</label>
+          <select id="language">
+            <option value="en">English（海外版）</option>
+            <option value="zh">中文</option>
+          </select>
+          <span class="hint" style="margin:0">换语言会自动切换音色/字体/字幕宽度</span>
+        </div>
+        <div class="row">
+          <label style="flex:0 0 66px">音色</label>
+          <select id="voice"></select>
+          <button class="ghost mini" id="btnSaveVoice">保存为默认</button>
+        </div>
+        <div class="row">
+          <label style="flex:0 0 66px">语速</label>
+          <input type="range" id="rate" min="-30" max="30" step="1" value="-6"
+                 style="flex:1;max-width:340px;accent-color:#ff4d6d">
+          <span id="rateVal" style="min-width:52px;font-variant-numeric:tabular-nums">-6%</span>
+          <span class="hint" style="margin:0">慢一点更解压/悬疑；快一点信息密度更高</span>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <button id="btnRender" disabled>② 生成视频</button>
+          <span class="msg" id="renderMsg"></span>
+        </div>
+        <div class="bar"><i id="bar"></i></div>
+        <div class="err" id="renderErr"></div>
+        <div class="hint" id="prepInfo"></div>
+      </div>
+    </div>
+
+    <!-- 右：成品 -->
+    <div>
+      <div class="card">
+        <h2>成品</h2>
+        <div id="emptyBox" class="empty">还没有成品。左侧解析原文 → 选开头 → 生成视频。</div>
+        <video id="video" class="hide" controls></video>
+        <div class="files" id="files"></div>
+        <div class="stat" id="meta" style="margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <h2>发布文案</h2>
+        <pre id="publish">（生成后显示）</pre>
+        <div class="row"><button class="ghost mini" id="btnCopy">复制文案</button></div>
+      </div>
+
+      <div class="card">
+        <h2>质检</h2>
+        <div class="qc" id="qc"><span class="hint">生成后显示</span></div>
+        <div class="files" id="qcFile"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const API = {
+  async get(u){ const r = await fetch(u); if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.status); return r.json(); },
+  async del(u){ const r = await fetch(u, {method:'DELETE'});
+                 const d = await r.json().catch(()=>({}));
+                 if(!r.ok) throw new Error(d.detail || ('HTTP '+r.status)); return d; },
+  async post(u, b){ const r = await fetch(u, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b||{})});
+                    const d = await r.json().catch(()=>({}));
+                    if(!r.ok) throw new Error(d.detail || ('HTTP '+r.status)); return d; }
+};
+let state = { jobId:null, prepared:null, hooks:[], segments:[], timer:null };
+
+function setErr(el, msg){ const e = $(el); e.textContent = msg || ''; }
+
+// ---------- 设置 ----------
+function rateText(v){
+  const n = parseInt(v, 10) || 0;
+  return (n > 0 ? '+' : '') + n + '%';
+}
+
+function fillVoices(s){
+  const sel = $('#voice'); const keep = sel.value;
+  sel.innerHTML = '';
+  (s.voices||[]).forEach(v => {
+    const o = document.createElement('option');
+    o.value = v.id; o.textContent = v.name;
+    sel.appendChild(o);
+  });
+  if (keep && (s.voices||[]).some(v=>v.id===keep)) sel.value = keep;
+  else if (s.tts_voice) sel.value = s.tts_voice;
+}
+
+async function init(){
+  try{
+    const s = await API.get('/api/settings');
+    $('#assetsDir').value = s.assets_dir || '';
+    $('#outDir').value = s.out_dir || '';
+    if (s.language) $('#language').value = s.language;
+    fillVoices(s);
+    fillSelect('#style', s.styles, s.style);
+    fillSelect('#person', s.persons, s.person);
+    fillSelect('#hookStrength', s.hook_strengths, s.hook_strength);
+    if (s.tts_rate){
+      const rv = parseInt(String(s.tts_rate).replace('%','').replace('+',''), 10) || 0;
+      $('#rate').value = rv; $('#rateVal').textContent = rateText(rv);
+    }
+    $('#excludeSynthetic').checked = s.exclude_synthetic !== false;
+    const lb = $('#langBadge');
+    lb.textContent = s.language === 'en' ? 'English · 海外版' : '中文';
+    const b = $('#llmBadge');
+    if (s.has_llm){ b.textContent = '大模型已连接'; b.className = 'badge on'; }
+    else { b.textContent = '未配置大模型（离线改写）'; b.className = 'badge off'; }
+    loadAssets();
+    loadProjects();
+  }catch(e){ console.warn(e); }
+}
+function fillSelect(sel, options, current){
+  const el = $(sel); el.innerHTML = '';
+  (options||[]).forEach(o => {
+    const op = document.createElement('option');
+    op.value = o.id; op.textContent = o.label;
+    el.appendChild(op);
+  });
+  if (current && (options||[]).some(o=>o.id===current)) el.value = current;
+}
+
+async function loadProjects(){
+  try{
+    const r = await API.get('/api/projects');
+    const box = $('#projects');
+    box.innerHTML = '';
+    if (!r.projects.length){
+      box.innerHTML = '<span class="hint">还没有项目。贴原文解析一次就会出现在这里。</span>';
+      return;
+    }
+    r.projects.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'proj' + (p.job_id === state.jobId ? ' sel' : '');
+      const st = p.status || 'prepared';
+      const stText = st === 'done' ? '已出片' : (st === 'prepared' ? '已解析' : st);
+      div.innerHTML = `<span class="t">${p.title || p.job_id}</span>
+        <span class="st ${st}">${stText}</span>
+        <span class="hint" style="margin:0">${p.duration_hms || ''}</span>
+        <span class="del" title="删除项目">✕</span>`;
+      div.querySelector('.del').onclick = (e) => {
+        e.stopPropagation(); delProject(p.job_id, p.title || p.job_id);
+      };
+      div.onclick = () => loadProject(p.job_id);
+      box.appendChild(div);
+    });
+  }catch(e){}
+}
+
+async function delProject(id, name){
+  const keep = !!($('#keepOutput') && $('#keepOutput').checked);
+  const tip = keep ? '只删中间文件，成片保留在 output/ 下。' : '中间文件和成片都会删除，不可恢复。';
+  if (!confirm('删除项目「' + name + '」？\n\n' + tip)) return;
+  try{
+    const r = await API.del('/api/projects/' + encodeURIComponent(id) + '?keep_output=' + (keep ? 1 : 0));
+    if (state.jobId === id) resetAfterDelete();
+    await loadProjects();
+    if (keep && r.kept_output) console.log('成片保留在', r.kept_output);
+  }catch(e){ alert('删除失败：' + e.message); }
+}
+
+function resetAfterDelete(){
+  state.jobId = null; state.prepared = null;
+  $('#hookCard').classList.add('hide');
+  const v = $('#video'); v.pause(); v.classList.add('hide'); v.removeAttribute('src');
+  $('#emptyBox').classList.remove('hide');
+  $('#files').innerHTML = ''; $('#meta').innerHTML = '';
+  $('#publish').textContent = '（生成后显示）';
+  $('#qc').innerHTML = '<span class="hint">生成后显示</span>'; $('#qcFile').innerHTML = '';
+  $('#btnRender').disabled = true; $('#renderMsg').textContent = '';
+  $('#prepMsg').textContent = ''; $('#bar').style.width = '0%';
+  document.querySelectorAll('.proj').forEach(x=>x.classList.remove('sel'));
+}
+
+async function loadProject(id){
+  try{
+    const d = await API.get('/api/projects/' + id);
+    state.jobId = id;
+    if (d.style) $('#style').value = d.style;
+    if (d.person) $('#person').value = d.person;
+    if (d.hook_strength) $('#hookStrength').value = d.hook_strength;
+    if (d.voice) $('#voice').value = d.voice;
+    if (d.rate){
+      const rv = parseInt(String(d.rate).replace('%','').replace('+',''), 10) || 0;
+      $('#rate').value = rv; $('#rateVal').textContent = rateText(rv);
+    }
+    document.querySelectorAll('.proj').forEach(x=>x.classList.remove('sel'));
+    await loadProjects();
+    showPrepared({
+      hooks: d.hooks || [],
+      segments: d.segments || [],
+      publish: d.publish || {},
+      target_sec: d.target_sec || 0,
+      meta: {degraded: !!d.degraded}
+    });
+    $('#btnRender').disabled = false;
+    if (d.status === 'done' && d.duration_hms){
+      showProjectResult(id, d);
+    }
+    $('#hookCard').scrollIntoView({behavior:'smooth', block:'center'});
+  }catch(e){ alert('打开项目失败：' + e.message); }
+}
+
+function showProjectResult(id, d){
+  const base = '/files/' + id + '/';
+  $('#emptyBox').classList.add('hide');
+  const v = $('#video'); v.classList.remove('hide'); v.src = base + 'final.mp4?' + Date.now();
+  $('#files').innerHTML = ['final.mp4','cover.jpg','publish.txt','qa_report.txt']
+    .map(f => `<a href="${base}${f}" target="_blank">下载 ${f}</a>`).join('');
+  $('#meta').innerHTML = `<span>时长 <b>${d.duration_hms || '-'}</b></span>
+    <span><b>${d.chapters || '-'}</b> 章 · ${d.size_mb || '-'}MB</span>
+    <span>响度 <b>${d.lufs != null ? Number(d.lufs).toFixed(1) : '-'}</b> LUFS</span>
+    <span>质检 <b>${d.qc || '-'}</b></span>`;
+  fetch(base + 'publish.txt').then(r=>r.text()).then(t=>{ $('#publish').textContent = t; }).catch(()=>{});
+}
+
+async function loadAssets(){
+  try{
+    const a = await API.get('/api/assets');
+    const b = $('#assetBadge');
+    const usable = a.usable_count != null ? a.usable_count : a.count;
+    const usableSec = a.usable_seconds != null ? a.usable_seconds : a.total_seconds;
+    b.textContent = `素材 ${usable} 条 / ${(usableSec/60).toFixed(1)} 分钟`;
+    b.className = 'badge ' + (usable ? 'on' : 'off');
+    b.title = a.dir || '';
+    if ($('#assetHint')){
+      $('#assetHint').textContent = `可用 ${usable} 条 / ${(usableSec/60).toFixed(1)} 分钟` +
+        (a.count > usable ? `（另有 ${a.count-usable} 条测试素材默认不启用）` : '');
+    }
+  }catch(e){}
+}
+
+$('#excludeSynthetic').onchange = async () => {
+  try{ await API.post('/api/settings', {exclude_synthetic: $('#excludeSynthetic').checked});
+       await loadAssets(); }catch(e){ alert(e.message); }
+};
+
+$('#btnPurge').onclick = async () => {
+  if (!confirm('删除所有测试用的合成素材（只删 _synthetic 分类，不影响你的素材）？')) return;
+  try{
+    const r = await API.post('/api/assets/purge', {});
+    alert(`已清理 ${r.removed} 条测试素材`);
+    await loadAssets();
+  }catch(e){ alert('清理失败：'+e.message); }
+};
+
+$('#btnPickAssets').onclick = async () => {
+  try{ const r = await API.post('/api/pick-folder', {kind:'assets'});
+       if (r.path){ $('#assetsDir').value = r.path; await loadAssets(); } }
+  catch(e){ alert('选择失败：'+e.message); }
+};
+$('#btnPickOut').onclick = async () => {
+  try{ const r = await API.post('/api/pick-folder', {kind:'output'});
+       if (r.path) $('#outDir').value = r.path; }
+  catch(e){ alert('选择失败：'+e.message); }
+};
+$('#btnIngest').onclick = async () => {
+  const dir = $('#assetsDir').value.trim();
+  $('#btnIngest').disabled = true; $('#btnIngest').textContent = '扫描中…';
+  try{
+    const r = await API.post('/api/ingest', {dir});
+    $('#prepErr').textContent = '';
+    alert(`入库完成：新增 ${r.added} 条，重复 ${r.duplicates} 条，跳过 ${r.skipped} 条`);
+    await loadAssets();
+  }catch(e){ alert('入库失败：'+e.message); }
+  finally{ $('#btnIngest').disabled = false; $('#btnIngest').textContent = '扫描入库'; }
+};
+$('#rate').oninput = () => { $('#rateVal').textContent = rateText($('#rate').value); };
+
+$('#language').onchange = async () => {
+  try{
+    await API.post('/api/settings', {language: $('#language').value});
+    const s = await API.get('/api/settings');
+    fillVoices(s);
+    $('#langBadge').textContent = s.language === 'en' ? 'English · 海外版' : '中文';
+    if (state.jobId) {   // 已解析过的稿子语言变了，提示重新解析
+      $('#prepMsg').textContent = '语言已切换，请重新点「解析原文」';
+    }
+  }catch(e){ alert('切换失败：'+e.message); }
+};
+
+$('#btnSaveVoice').onclick = async () => {
+  try{ await API.post('/api/settings', {tts_voice: $('#voice').value,
+                                          tts_rate: rateText($('#rate').value)});
+       $('#btnSaveVoice').textContent='已保存 ✓';
+       setTimeout(()=>$('#btnSaveVoice').textContent='保存为默认',1200); }catch(e){ alert(e.message); }
+};
+
+// ---------- 解析 ----------
+$('#btnPrepare').onclick = async () => {
+  const text = $('#source').value.trim();
+  if (text.length < 800){ alert('原文太短，至少 800 字（5 分钟成片约需 1300 字以上）'); return; }
+  setErr('#prepErr', ''); $('#btnPrepare').disabled = true;
+  $('#prepMsg').textContent = '解析中…';
+  try{
+    const r = await API.post('/api/prepare', {text, minutes: parseFloat($('#minutes').value)||0,
+                                              title: $('#title').value.trim(),
+                                              style: $('#style').value,
+                                              person: $('#person').value,
+                                              hook_strength: $('#hookStrength').value,
+                                              voice: $('#voice').value,
+                                              rate: rateText($('#rate').value)});
+    state.jobId = r.job_id;
+    pollPrep(r.job_id);
+  }catch(e){ $('#btnPrepare').disabled = false; $('#prepMsg').textContent=''; setErr('#prepErr', e.message); }
+};
+
+function pollPrep(id){
+  clearInterval(state.timer);
+  state.timer = setInterval(async () => {
+    let j; try{ j = await API.get('/api/jobs/'+id); }catch(e){ return; }
+    $('#prepMsg').textContent = j.status==='preparing' ? (j.msg||'解析中…') : $('#prepMsg').textContent;
+    if (j.status === 'prepared'){
+      clearInterval(state.timer); $('#btnPrepare').disabled = false;
+      $('#prepMsg').textContent = '解析完成 ✓';
+      showPrepared(j.result);
+      $('#btnRender').disabled = false;
+      loadProjects();
+    } else if (j.status === 'error'){
+      clearInterval(state.timer); $('#btnPrepare').disabled = false;
+      $('#prepMsg').textContent = ''; setErr('#prepErr', j.error || '解析失败');
+    }
+  }, 1200);
+}
+
+function showPrepared(res){
+  state.prepared = res; state.hooks = res.hooks || [];
+  state.segments = (res.segments || []).map(s => s.text);
+  $('#hookCard').classList.remove('hide');
+  $('#genCard').classList.remove('hide');
+  const wrap = $('#hooks'); wrap.innerHTML = '';
+  state.hooks.forEach((h, i) => {
+    const d = document.createElement('label');
+    d.className = 'hook' + (i===0 ? ' sel' : '');
+    d.dataset.idx = i;
+    d.innerHTML = `<span class="t">${h.type || ('版本'+(i+1))}</span><span style="color:#98a2b3;font-size:12px">${h.text.length} 字</span><div class="x">${h.text}</div>`;
+    d.onclick = () => { document.querySelectorAll('.hook').forEach(x=>x.classList.remove('sel')); d.classList.add('sel'); };
+    wrap.appendChild(d);
+  });
+  const segs = res.segments || [];
+  const chars = segs.reduce((n,s)=>n+s.text.length,0);
+  $('#segHint').textContent = `${segs.length} 句 / ${chars} 字`;
+  $('#prepInfo').textContent = `目标时长约 ${Math.round(res.target_sec/60*10)/10} 分钟 · ${segs.length} 句 · ${chars} 字` +
+    (res.meta && res.meta.degraded ? ' · ⚠️ 离线改写' : ' · LLM 改写');
+  $('#segEditor').value = state.segments.join('\n');
+  const pub = res.publish || {};
+  $('#publish').textContent = renderPublishText(pub);
+  $('#btnRender').disabled = false;
+  $('#hookCard').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function renderPublishText(pub){
+  const lines = [];
+  const titles = pub.title_candidates || [];
+  if (titles.length) lines.push('【标题候选】\n' + titles.map((t,i)=>`  ${i+1}. ${t}`).join('\n'));
+  if (pub.hashtags) lines.push('【话题】' + pub.hashtags.join(' '));
+  if (pub.pinned_comment) lines.push('【置顶评论】' + pub.pinned_comment);
+  if (pub.cover_text) lines.push('【封面文案】' + pub.cover_text.replace(/\\n/g,' / '));
+  return lines.join('\n\n') || '（无）';
+}
+
+$('#btnEdit').onclick = () => {
+  const t = $('#segEditor');
+  t.classList.toggle('hide');
+  if (!t.classList.contains('hide')) t.value = state.segments.join('\n');
+};
+
+// ---------- 生成 ----------
+$('#btnRender').onclick = async () => {
+  if (!state.jobId) return;
+  const sel = document.querySelector('.hook.sel');
+  const custom = $('#customHook').value.trim();
+  const segBox = $('#segEditor');
+  let segments = null;
+  if (!segBox.classList.contains('hide')){
+    segments = segBox.value.split('\n').map(x=>x.trim()).filter(Boolean);
+    if (segments.length < 10){ alert('分段稿太短（至少 10 句）'); return; }
+  }
+  const body = { job_id: state.jobId, hook_index: sel ? parseInt(sel.dataset.idx) : 0,
+                 hook_text: custom, segments,
+                 out_dir: $('#outDir').value.trim(),
+                 voice: $('#voice').value,
+                 rate: rateText($('#rate').value) };
+  setErr('#renderErr',''); $('#btnRender').disabled = true; $('#renderMsg').textContent='提交中…';
+  try{
+    await API.post('/api/render', body);
+    pollRender(state.jobId);
+  }catch(e){ $('#btnRender').disabled=false; setErr('#renderErr', e.message); }
+};
+
+function pollRender(id){
+  clearInterval(state.timer);
+  state.timer = setInterval(async () => {
+    let j; try{ j = await API.get('/api/jobs/'+id); }catch(e){ return; }
+    const pct = Math.round((j.pct||0)*100);
+    $('#bar').style.width = Math.min(100,pct)+'%';
+    $('#renderMsg').textContent = `${pct}% · ${j.msg||''}`;
+    if (j.status === 'done'){
+      clearInterval(state.timer); $('#btnRender').disabled = false;
+      $('#renderMsg').textContent = '完成 ✓';
+      showDone(j);
+      loadProjects();
+    } else if (j.status === 'error'){
+      clearInterval(state.timer); $('#btnRender').disabled = false;
+      setErr('#renderErr', j.error || '生成失败');
+    }
+  }, 1200);
+}
+
+function showDone(j){
+  const res = j.result || {};
+  const base = '/files/' + j.job_id + '/';
+  $('#emptyBox').classList.add('hide');
+  const v = $('#video'); v.classList.remove('hide'); v.src = base + 'final.mp4?' + Date.now();
+  $('#files').innerHTML = ['final.mp4','cover.jpg','publish.txt','qa_report.txt']
+    .map(f => `<a href="${base}${f}" target="_blank">下载 ${f}</a>`).join('');
+  $('#meta').innerHTML = `<span>时长 <b>${res.duration_hms||'-'}</b></span>
+    <span>${res.width}x${res.height} · ${res.fps||'-'}fps</span>
+    <span><b>${res.chapters||'-'}</b> 章 · ${res.size_mb||'-'}MB</span>
+    <span>响度 <b>${res.lufs!=null?res.lufs.toFixed(1):'-'}</b> LUFS</span>
+    ${res.exported_dir ? `<span>已另存：<b>${res.exported_dir}</b></span>` : ''}`;
+  const qc = res.qc || {};
+  const box = $('#qc'); box.innerHTML = '';
+  (qc.checks||[]).forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'it';
+    const cls = c.ok ? 'pass' : (c.level==='error'?'error':'warning');
+    const mark = c.ok ? '✅' : (c.level==='error'?'❌':'⚠️');
+    div.innerHTML = `<span class="n ${cls}">${mark} ${c.name}</span><span>${c.detail}</span>`;
+    box.appendChild(div);
+  });
+  if (!(qc.checks||[]).length) box.innerHTML = '<span class="hint">无质检数据</span>';
+  if (qc.status) $('#qcFile').innerHTML = `<a href="${base}qa_report.txt" target="_blank">下载质检报告</a>`;
+  fetch(base+'publish.txt').then(r=>r.text()).then(t=>{$('#publish').textContent = t;}).catch(()=>{});
+  loadAssets();
+}
+
+$('#btnCopy').onclick = async () => {
+  try{ await navigator.clipboard.writeText($('#publish').textContent);
+       $('#btnCopy').textContent='已复制 ✓'; }
+  catch(e){ alert('复制失败，请手动选中'); }
+  setTimeout(()=>$('#btnCopy').textContent='复制文案', 1500);
+};
+
+init();
+</script>
+</body>
+</html>
