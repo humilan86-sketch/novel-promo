@@ -1,6 +1,7 @@
 # novel-auto · AI novel-to-short-video pipeline
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/humilan86-sketch/novel-promo/actions/workflows/ci.yml/badge.svg)](https://github.com/humilan86-sketch/novel-promo/actions/workflows/ci.yml)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 
 Turn a novel chapter into a **3–10 minute vertical video with narration, subtitles, b-roll and publish copy** — fully automated, reviewable at every step.

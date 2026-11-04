@@ -23,5 +23,5 @@ novel-auto/.env
 # 本地上传辅助脚本（含个人用户名，不入库）
 上传到GitHub.command
 
-# 待 token 具备 workflow 权限后再启用（本地已写好在工作区）
-.github/workflows/ci.yml
+# 本地的「干净版」展示仓库（独立 git 仓库，不入库）
+.fresh/

@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: novel-auto/requirements.txt
+      - name: Install dependencies
+        working-directory: novel-auto
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Byte-compile
+        run: python -m compileall -q novel-auto/novelauto
+      - name: Import all modules
+        run: python -c "import sys; sys.path.insert(0, 'novel-auto'); import novelauto.pipeline, novelauto.web, novelauto.qc, novelauto.render, novelauto.scriptwriter, novelauto.tts; print('imports ok')"
+      - name: CLI help
+        working-directory: novel-auto
+        run: python -m novelauto --help
+      - name: Syntax check console template
+        run: python -c "from pathlib import Path; p = Path('novel-auto/novelauto/templates/index.html'); assert p.exists() and p.stat().st_size > 1000; print('template ok')"
