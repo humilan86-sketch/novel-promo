@@ -1,0 +1,32 @@
+name: Bug report
+description: Something broke while preparing or rendering a video
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the report! Please strip API keys and personal paths from logs.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Command or console action, and the error output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: macOS 15 / Python 3.11 / ffmpeg 7.1 (Homebrew)
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`python -m novelauto doctor` output"
+      render: text

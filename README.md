@@ -1,49 +1,82 @@
-# 小说推文自动化 · TikTok 解压视频
+# novel-auto · AI novel-to-short-video pipeline
 
-输入一段小说原文，自动产出 **3-10 分钟竖屏成品视频 + 发布文案 + 质检报告**。
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+
+Turn a novel chapter into a **3–10 minute vertical video with narration, subtitles, b-roll and publish copy** — fully automated, reviewable at every step.
 
 ```
-原文 → 改写（3 版黄金三秒 + 章回钩子）→ 自动配音 → 字幕 → 素材剪辑 → 渲染合成 → 发布文案 → 质检
+source text
+  → script rewrite (3 hook variants + chapter cliffhangers + duration convergence)
+  → TTS narration (Edge TTS default; Volcengine / MiniMax supported)
+  → timeline (real audio lengths, ms level)
+  → subtitles (Pillow-rendered transparent PNGs, auto line wrap, fade in/out)
+  → b-roll selection (fingerprint dedupe, cooldown, anti-duplicate params)
+  → render (segmented render, Ken Burns, color grade, overlay, mixdown, concat)
+  → publish kit (cover, 3 title options, hashtags, pinned comment, upload checklist)
+  → QA (duration / resolution / LUFS / black frames / silence / A-V sync / hook density)
 ```
 
-- 英文海外版默认（可切中文）、1080x1920、3-10 分钟
-- 配音 edge-tts（可换火山 / MiniMax，支持音色与语速）
-- 素材自动选片、冷却防撞车，成片带 Ken Burns 动效与淡入淡出字幕
-- 交付物：`final.mp4` + `cover.jpg` + `publish.txt` + `qa_report.txt`
+Built for long-form storytelling instead of 30-second clips: chapter-by-chapter retention hooks, automatic duration convergence to a target length, and a two-phase flow (rewrite first, pick a hook, then render) that keeps TTS cache reusable across re-renders.
 
-## 目录
+![Console](novel-auto/docs/ui-home.png)
 
-| 路径 | 内容 |
-|---|---|
-| `novel-auto/` | 可运行的完整工程（Python + FastAPI 控制台 + 双击启动器），使用文档见 [novel-auto/README.md](novel-auto/README.md) |
-| `小说推文自动化方案-v2.md` | 整体方案：流水线设计、长视频章回钩子、时长收敛、质检、成本 |
-| `参考方案对比与借鉴清单.md` | 与另一份需求文档的对比与借鉴项 |
-| `.dsh/skills/novel-promo/` | DSH 技能：在对话里直接说需求即可跑流水线 |
+## Highlights
 
-## 快速开始
+- **Two-phase pipeline** — `prepare` (rewrite + 3 hook variants, 10–30 s) and `render` (video, re-runnable per chosen hook)
+- **Duration control** — target 3–10 min with tolerance; the script is tightened or expanded until the rendered length converges
+- **ffmpeg without libass?** subtitles are rendered with Pillow to transparent PNGs, so it works on stock macOS/Homebrew ffmpeg
+- **Asset library** — SQLite index, perceptual fingerprint dedupe, per-clip cooldown, reuse caps, synthetic placeholders for first-run testing
+- **Local web console** — FastAPI + vanilla JS: project list, editable segments, per-project voice/rate/style, live progress, download
+- **Quality report** — `qa_report.txt` with pass/warn per check, plus `meta.json` for automation
+- **Chinese + English** — language switch changes prompts, word budgets, voices, fonts, subtitle wrapping, hashtags
+
+## Quick start
 
 ```bash
 cd novel-auto
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env        # 填 LLM_API_KEY（DeepSeek）
-./.venv/bin/python -m novelauto doctor          # 自检 ffmpeg / Key / 字体
-./.venv/bin/python -m novelauto web             # 打开控制台
+cp .env.example .env                      # add LLM_API_KEY (DeepSeek API by default)
+./.venv/bin/python -m novelauto doctor    # checks ffmpeg / key / fonts
+./.venv/bin/python -m novelauto web       # opens the console on 127.0.0.1
 ```
 
-macOS 也可以直接双击 `novel-auto/小说推文控制台.app`。
-
-**首次使用没素材？** 用测试素材跑通流程：
+No footage yet? Generate placeholder clips to try the full pipeline:
 
 ```bash
 ./.venv/bin/python -m novelauto assets synth --count 3 --seconds 90
 ```
 
-## 不会上传进仓库的东西
+CLI only:
 
-`.venv/`、`work/`、`output/`、`.cache/`、`assets/clips/`（你的视频素材）、`.env`（API Key）都已被 `.gitignore` 排除，仓库里只有代码、文档和示例文本。
+```bash
+./.venv/bin/python -m novelauto prepare -i samples/sample_story_en.txt --minutes 4 --language en
+./.venv/bin/python -m novelauto render  --job-id <job_id> --hook 2
+```
 
-## 版权与使用
+## Repository layout
 
-- 代码以 MIT 许可发布（见 `LICENSE`）。
-- 小说原文、配音音色、视频素材的版权归各自权利人；商用前请确认授权，本项目不附带任何素材内容。
+| Path | What |
+|---|---|
+| `novel-auto/` | Runnable project: `novelauto/` package, FastAPI console, launchers — see [novel-auto/README.md](novel-auto/README.md) |
+| `novel-auto/novelauto/` | Pipeline modules: `scriptwriter`, `tts`, `audio`, `subtitles`, `assets`, `render`, `publish`, `qc`, `pipeline`, `web` |
+| `小说推文自动化方案-v2.md` | Design doc (Chinese): pipeline, retention hooks, duration convergence, QA, cost |
+| `参考方案对比与借鉴清单.md` | Comparison against a reference spec (Chinese) |
+| `.dsh/skills/novel-promo/` | DSH skill so an agent can drive the pipeline conversationally |
+
+## Not in the repo
+
+`.venv/`, `work/`, `output/`, `.cache/`, `assets/clips/` (your footage) and `.env` (API keys) are git-ignored — only code, docs and sample text live here.
+
+## 中文简介
+
+输入一段小说原文，自动产出 3–10 分钟竖屏成品视频（配音 + 字幕 + 素材 + 动效）与发布文案包，默认英文海外版，可切中文。
+
+核心设计：两阶段流水线（先改写、选开头，再渲染，TTS 缓存可复用）、章回续航钩子、时长自动收敛、无 libass 环境也能烧字幕、素材库防撞车选片、逐项质检报告。
+
+详细用法见 [novel-auto/README.md](novel-auto/README.md)，工程方案见 [小说推文自动化方案-v2.md](小说推文自动化方案-v2.md)。
+
+## License & content notice
+
+Code is MIT licensed (see `LICENSE`). Novel text, TTS voices and footage remain the property of their respective owners — bring your own licensed content; this repository ships no media.
