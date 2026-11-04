@@ -230,6 +230,8 @@ novel-auto/
 ├── assets/clips/            # 你的素材
 ├── assets/assets.db         # 素材索引（sqlite，指纹/冷却记录）
 ├── samples/sample_story.txt # 测试原文
+├── daily/                   # 每日自动生成（inbox 放原文 / done 归档 / logs 日志+status.json）
+├── scripts/                 # install_daily.sh（定时任务）、daily_run.command（终端入口）
 ├── work/<job_id>/           # 中间产物：script.json / timeline.json / master.wav
 │   └── render/chXX/         # 分章节的 subs.ass / audio.wav / chapter.mp4
 └── output/<job_id>/         # 交付物
@@ -294,6 +296,77 @@ novel-auto/
 技能 `novel-promo` 也已补上 `delete` 用法，并要求先问用户确认再删。
 
 > 只删 `work/<job_id>` 和 `output/<job_id>`。记录里指向外部自定义导出目录的，只提示不删，避免误删桌面上的其他文件。
+
+## 十四·五、每天自动生成（定时任务）
+
+想「晚上丢原文，早上起床就有成片」：把原文扔进 `daily/inbox/`，定时任务到点自动跑完整条流水线。
+
+### 装一次
+
+双击 **`设置每日自动生成.command`**。它会：
+
+1. 写入 launchd 定时任务 `~/Library/LaunchAgents/com.huqi.novel-promo.daily.plist`（默认每天 **08:00**）
+2. 问你要不要顺便设置「07:55 自动唤醒」（需要一次开机密码，`sudo pmset repeat wakeorpoweron MTWRFSU 07:55:00`）
+
+> **为什么到点会弹出一个终端窗口？**
+> macOS 的隐私保护不允许「后台任务」读取 `~/Documents`（测试确认：launchd 直接跑会报 `PermissionError: Operation not permitted`）。所以默认让**终端**来启动——终端有这个权限，你也能顺便看到跑到哪一步。跑完窗口留着就行，关掉不影响成片。
+>
+> 想完全不弹窗（静默模式）：先到「系统设置 → 隐私与安全性 → 完全磁盘访问权限」把 `.venv/bin/python` 加进去，再执行 `./scripts/install_daily.sh --silent` 重装一次。
+
+取消：双击 **`开启自动唤醒.command`** 可单独设唤醒；双击 **`关闭每日自动生成.command`** 卸载定时任务（不动已生成的成片）。
+
+### 每天怎么用
+
+```
+daily/inbox/001-我的书名.txt      ← 丢这里就会排队
+daily/inbox/002-下一本.md
+```
+
+- 文件名前缀 `001-` 只用于排序，标题会自动去掉数字前缀
+- 也可以在文件第一行写 `title: 我的书名`
+- 英文建议 600 词以上，中文 1300 字以上（3 分钟成片的底线）
+- 每次默认跑 **1 篇**（`daily.max_per_run`），收件箱空着就只记日志 + 通知，不会报错
+
+### 跑完长什么样
+
+- 成片：`output/<job_id>/final.mp4` + `cover.jpg` + `publish.txt` + `qa_report.txt`
+- 原文归档：`daily/done/<时间戳>_001-我的书名.txt`
+- 结果记录：同目录 `….result.json`（job_id、时长、开头序号、成品路径、质检状态）
+- 失败：原文进 `daily/failed/`，附 `….error.txt`（完整堆栈），并弹系统通知；自动重试 1 次
+- 总览：`daily/logs/status.json`；日志 `daily/logs/launchd.out.log`、`launchd.err.log`
+
+### 常用命令 / 调试
+
+```bash
+./.venv/bin/python -m novelauto daily --dry-run   # 今天会处理哪些文件（不真跑）
+./.venv/bin/python -m novelauto daily             # 立刻手动跑一次
+./.venv/bin/python -m novelauto daily --max 3     # 一次处理 3 篇
+./.venv/bin/python -m novelauto daily --no-notify # 不弹通知
+pmset -g sched                                    # 看自动唤醒有没有设上
+launchctl print gui/$UID/com.huqi.novel-promo.daily | head -20   # 看任务状态
+```
+
+### 可调参数（`config.yaml` → `daily:`）
+
+| 键 | 默认 | 说明 |
+|---|---|---|
+| `time` | `08:00` | 每天几点跑（重装脚本后生效） |
+| `max_per_run` | `1` | 每次最多几篇 |
+| `retry` / `retry_wait` | `1` / `90` | 失败重试次数与等待秒数 |
+| `hook` | `1` | 用第几个开头；`auto` = 每天轮换 1/2/3 |
+| `minutes` | `0` | `0` = 按原文长度自动落在 3-10 分钟；也可固定如 `4.5` |
+| `voice` / `rate` / `language` | 空 | 留空用主配置；填了就覆盖当天 |
+| `style` / `person` / `hook_strength` | `auto` | 同网页上的三个下拉 |
+| `ingest` / `ingest_dir` | `false` / 空 | 每天先扫素材目录入库（素材会越用越少，建议开） |
+| `keep_awake` | `true` | 跑的时候用 `caffeinate` 阻止休眠 |
+| `network_timeout` | `240` | 刚唤醒时等网络就绪的最长秒数 |
+
+### 注意
+
+- **关机不能自动开机**（硬件限制）：只能从「睡眠」唤醒。笔记本建议插电、别合盖断网
+- 每天跑之前素材要够：素材库可用时长 ≈ 1.2 × 成片时长。不够会在 `render` 阶段报错并通知 → 记得往素材目录补片、或开 `daily.ingest`
+- 大模型额度：每条成片 3-6 次 LLM 调用（改写+钩子），DeepSeek 余额不足会在日志里报错
+- 定时任务和手动跑互斥（`daily/logs/.lock`），撞上会直接提示「另一个任务正在运行」
 
 ## 十五、常见问题
 

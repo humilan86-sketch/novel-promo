@@ -7,3 +7,12 @@ output/
 assets/assets.db
 *.pyc
 .DS_Store
+
+# 每日自动生成：只保留说明和空目录，收件箱内容/产物不进 git
+daily/inbox/*
+!daily/inbox/.gitkeep
+daily/done/
+daily/failed/
+daily/logs/
+daily/status.json
+daily/.lock

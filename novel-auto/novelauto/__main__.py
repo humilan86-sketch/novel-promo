@@ -271,6 +271,39 @@ def cmd_delete(args) -> int:
     return 0
 
 
+def cmd_daily(args) -> int:
+    from . import daily
+    cfg = load()
+    max_tasks = args.max or int(cfg.get("daily.max_per_run", 1) or 1)
+    results = daily.run(cfg, max_tasks=max_tasks, dry_run=args.dry_run,
+                        notify_=not args.no_notify)
+    # 收件箱空（skipped）不算失败
+    ok = True if args.dry_run else (bool(results) and all(
+        r.get("ok") or r.get("skipped") for r in results))
+    if getattr(args, "json", False):
+        _emit_json({"ok": ok, "results": results})
+        return 0 if ok else 1
+    if not results:
+        return 0
+    if args.dry_run:
+        ready = [r for r in results if r.get("dry_run")]
+        if not ready:
+            print("今天没有待处理的原文（daily/inbox 是空的）")
+            return 0
+        print("将会处理：")
+        for r in ready:
+            print("  - %s（标题：%s，开头 #%s）" % (r["file"], r["title"], r["hook"]))
+        return 0
+    for r in results:
+        if r.get("skipped"):
+            print("今天没有待处理的原文（daily/inbox 是空的）")
+        elif r.get("ok"):
+            print("✅ %s → %s（%s）" % (r.get("title"), r.get("out_dir"), r.get("duration_hms", "")))
+        else:
+            print("❌ %s：%s" % (r.get("file") or r.get("title"), r.get("error")))
+    return 0 if ok else 1
+
+
 def cmd_doctor(args) -> int:
     cfg = load()
     ok = True
@@ -435,6 +468,13 @@ def main(argv=None) -> int:
     dl.add_argument("--yes", action="store_true", help="确认执行（不加只提示）")
     dl.add_argument("--json", action="store_true", help="机器可读 JSON 输出")
     dl.set_defaults(func=cmd_delete)
+
+    dy = sub.add_parser("daily", help="每日自动生成：处理 daily/inbox 里的原文")
+    dy.add_argument("--max", type=int, default=0, help="最多处理几篇（默认取 daily.max_per_run）")
+    dy.add_argument("--dry-run", action="store_true", help="只看会处理哪些文件，不真正生成")
+    dy.add_argument("--no-notify", action="store_true", help="不发系统通知")
+    dy.add_argument("--json", action="store_true", help="机器可读 JSON 输出")
+    dy.set_defaults(func=cmd_daily)
 
     args = p.parse_args(argv)
     try:

@@ -92,6 +92,30 @@ DEFAULTS: Dict[str, Any] = {
         "chapter_max_sec": 75,
         "offline": False,
     },
+    "daily": {
+        "enabled": True,
+        "time": "08:00",              # launchd 触发时间（安装脚本读取）
+        "inbox": "daily/inbox",       # 原文放这里，按文件名顺序处理
+        "done": "daily/done",
+        "failed": "daily/failed",
+        "logs": "daily/logs",
+        "max_per_run": 1,             # 每次跑几篇
+        "retry": 1,                   # 失败重试次数
+        "retry_wait": 90,
+        "network_timeout": 240,       # 刚唤醒时等网络就绪
+        "language": "en",
+        "minutes": 0,                 # 0 = 按原文长度自动落在 3-10 分钟
+        "voice": "",
+        "rate": "",
+        "style": "auto",
+        "person": "auto",
+        "hook_strength": "normal",
+        "hook": 1,                    # 1/2/3，或 "auto" 每天轮换
+        "offline": False,
+        "keep_awake": True,           # 跑的时候 caffeinate 阻止休眠
+        "ingest": False,              # 每次先扫描素材目录入库
+        "ingest_dir": "",
+    },
     "qc": {
         "blackdetect": True,
         "black_min_duration": 2.0,
